@@ -320,7 +320,7 @@ class Linux(Platform):
         self._syscall_abi = CpuFactory.get_syscall_abi(cpu, 'linux', arch)
 
         self._current = 0
-        self.load(program)
+        self.load(program, options)
         self._arch_specific_init(arch)
         self._stack_top = self.current.STACK
         self.setup_stack([program]+argv, envp, options)
@@ -1745,7 +1745,7 @@ class SLinux(Linux):
     '''
     A symbolic extension of a Decree Operating System Platform.
     '''
-    def __init__(self, constraints, programs, argv, envp, symbolic_random=None, symbolic_files=()):
+    def __init__(self, constraints, programs, argv, envp, symbolic_random=None, symbolic_files=(), **options):
         '''
         Builds a symbolic extension of a Decree OS
         :param constraints: a constraints.
@@ -1754,7 +1754,7 @@ class SLinux(Linux):
         self._constraints = ConstraintSet()
         self.random = 0
         self.symbolic_files=symbolic_files
-        super(SLinux, self).__init__(programs, argv, envp)
+        super(SLinux, self).__init__(programs, argv, envp, **options)
 
     def _mk_proc(self, arch):
         if arch in {'i386', 'armv7'}:

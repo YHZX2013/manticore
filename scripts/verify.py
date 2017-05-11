@@ -9,6 +9,7 @@ import qemu
 import gdb
 
 logger = logging.getLogger('TRACE')
+logger.setLevel(logging.DEBUG)
 
 def dump_gdb(cpu, addr, count):
     for offset in range(addr, addr+count, 4):
@@ -85,7 +86,7 @@ def sync_svc(m, state):
     for i in range(4):
         logger.debug("R{}: {:x}".format(i, gdb.getR('R%d'%i)))
 
-def init(m, state):
+def initialize(m, state):
     gdb_regs = gdb.getCanonicalRegisters()
     logger.debug("Copying stack..")
     for address in range(state.cpu.SP, 0xf7000000):
@@ -93,7 +94,7 @@ def init(m, state):
         state.cpu.write_int(address, b, 8)
     logger.debug("Done")
     for reg in gdb_regs:
-        state.cpu.write_register(reg.upper(), gdb_regs[reg])
+        setattr(state.cpu, reg.upper(), gdb_regs[reg])
     m.context['initialized'] = True
 
 
@@ -115,10 +116,13 @@ def verify(argv):
     def on_instruction(state):
         # Initialize our state to QEMU's
         if not m.context['initialized']:
-            init(m, state)
+            initialize(m, state)
+            m.context['initialized'] = True
 
         if m.context['last_pc_executed'] != state.cpu.PC:
             on_after(m, state)
+
+        m.context['last_pc_executed'] = state.cpu.PC
 
         # XXX(yan): The trace would diverge at this offset in the value of R4
         # in the example I was using. This might need to be adjusted for other
@@ -140,7 +144,7 @@ def verify(argv):
         if mnemonic == 'svc':
             sync_svc(m, state)
 
-    m.run()
+    m.run(stack_top=0xf7000000, interpreter_base=0xf67ce810, stack_offset=-0x9c0)
 
 if __name__ == "__main__":
     args = argv[1:]

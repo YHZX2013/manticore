@@ -37,12 +37,12 @@ def makeDecree(args):
     platform.input.transmit(initial_state.symbolicate_buffer('+'*14, label='RECEIVE'))
     return initial_state
 
-def makeLinux(program, argv, env, concrete_start = ''):
+def makeLinux(program, argv, env, concrete_start = '', **options):
     logger.info('Loading program %s', program)
 
     constraints = ConstraintSet()
     platform = linux.SLinux(constraints, program, argv=argv, envp=env,
-            symbolic_files=('symbolic.txt'))
+            symbolic_files=('symbolic.txt'), **options)
     initial_state = State(constraints, platform)
 
     if concrete_start != '':
@@ -69,7 +69,7 @@ def makeLinux(program, argv, env, concrete_start = ''):
     return initial_state 
 
 
-def makeWindows(args):
+def makeWindows(args, **options):
     assert args.size is not None, "Need to specify buffer size"
     assert args.buffer is not None, "Need to specify buffer base address"
     logger.debug('Loading program %s', args.programs)
@@ -332,17 +332,17 @@ class Manticore(object):
 
             return symbols[0].entry['st_value']
 
-    def _make_state(self, path):
+    def _make_state(self, path, **options):
         if self._binary_type == 'ELF':
             # Linux
             env = ['%s=%s'%(k,v) for k,v in self._env.items()]
-            state = makeLinux(self._binary, self._argv, env, self._concrete_data)
+            state = makeLinux(self._binary, self._argv, env, self._concrete_data, **options)
         elif self._binary_type == 'PE':
             # Windows
-            state = makeWindows(self._args)
+            state = makeWindows(self._args, **options)
         elif self._binary_type == 'DECREE':
             # Decree
-            state = makeDecree(self._args)
+            state = makeDecree(self._args, **options)
         else:
             raise NotImplementedError("Binary {} not supported.".format(path))
 
@@ -508,12 +508,13 @@ class Manticore(object):
                 self._assertions[pc] = ' '.join(line.split(' ')[1:])
 
 
-    def run(self, procs=1, timeout=0):
-        '''
+    def run(self, procs=1, timeout=0, **options):
+        r'''
         Runs analysis.
 
         :param int procs: Number of parallel worker processes
-        :param timeout: Analysis timeout, in seconds
+        :param int timeout: Analysis timeout, in seconds
+        :param \**options: Additional options to pass for model creation.
         '''
         assert not self._running, "Manticore is already running."
         args = self._args
@@ -523,7 +524,7 @@ class Manticore(object):
             with open(args.replay, 'r') as freplay:
                 replay = map(lambda x: int(x, 16), freplay.readlines())
 
-        state = self._make_state(self._binary)
+        state = self._make_state(self._binary, **options)
 
         self._executor = Executor(state,
                                   workspace=self.workspace, 
