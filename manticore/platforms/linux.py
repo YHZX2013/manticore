@@ -1457,7 +1457,7 @@ class Linux(Platform):
             table = getattr(linux_syscalls, self.current.machine)
             name = table[index]
             implementation = getattr(self, name)
-        except AttributeError:
+        except (AttributeError, KeyError):
             raise SyscallNotImplemented(self.current.address_bit_size, index)
 
         return self._syscall_abi.invoke(implementation)
@@ -1742,15 +1742,19 @@ class Linux(Platform):
 # Symbolic versions follows
 
 class SLinux(Linux):
-    '''
-    A symbolic extension of a Decree Operating System Platform.
-    '''
-    def __init__(self, constraints, programs, argv, envp, symbolic_random=None, symbolic_files=(), **options):
-        '''
-        Builds a symbolic extension of a Decree OS
-        :param constraints: a constraints.
-        :param mem: memory for this platform.
-        '''
+    """
+    Builds a symbolic extension of a Linux OS
+
+    :param str programs: path to ELF binary
+    :param list argv: argv not including binary
+    :param list envp: environment variables
+    :param tuple[str] symbolic_files: files to consider symbolic
+    :param dict options: Additional options for initialization
+    """
+    def __init__(self, programs, argv=None, envp=None, symbolic_files=(), **options):
+        argv = [] if argv is None else argv
+        envp = [] if envp is None else envp
+
         self._constraints = ConstraintSet()
         self.random = 0
         self.symbolic_files=symbolic_files
